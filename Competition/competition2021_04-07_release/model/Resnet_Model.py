@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional
 
-from Weight_Stand_Conv import WS_Conv2d
+from .Weight_Stand_Conv import WS_Conv2d
 
 '''
 base block use WS_Conv + GroupNorm
