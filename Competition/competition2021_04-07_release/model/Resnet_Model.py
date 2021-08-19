@@ -1,8 +1,12 @@
+
+import sys
+import os 
+
 import torch.nn as nn
 import torch
 import torch.nn.functional
 
-from .Weight_Stand_Conv import WS_Conv2d
+from model.Weight_Stand_Conv import WS_Conv2d
 
 '''
 base block use WS_Conv + GroupNorm
@@ -105,15 +109,49 @@ class Individual_block_GN(nn.Module):
         return out
 
 
+# model
+class ResNet(nn.Module):
+    def __init__(self, block, n_block=[2,2,2,2], in_planes = 64, n_class = 801, n_gn = 32, expansion = 1):
+        super(ResNet, self).__init__()
+        self.planes = in_planes
+        self.expansion = expansion
+
+        self.conv = nn.Sequential(
+            WS_Conv2d(3, in_planes, kernel_size=3, stride=1, padding=1),
+            nn.GroupNorm(n_gn, in_planes),
+            nn.ReLU()
+        )
+        self.layer1 = self._make_layer(block, in_planes, n_block[0], stride=1, GN_num=n_gn)
+        self.layer2 = self._make_layer(block, in_planes*2, n_block[1], stride=2, GN_num=n_gn)
+        self.layer3 = self._make_layer(block, in_planes*4, n_block[2], stride=2, GN_num=n_gn)
+        self.layer4 = self._make_layer(block, in_planes*8, n_block[3], stride=2, GN_num=n_gn)
+
+        self.fc = nn.Linear(in_planes*8*self.expansion, n_class)
+        self.activate = nn.LogSoftmax(dim = -1)
+    
+    def _make_layer(self, block, out_planes, n_blocks, stride, GN_num):
+        strides = [stride] + [1] *(n_blocks - 1)
+        layers = []
+        for stride in strides :
+            layers.append(block(self.planes, out_planes, stride, GN_num))
+            self.planes = out_planes * self.expansion
+        return nn.Sequential(*layers)
+    
+    def forward(self, x):
+        out = self.conv(x)
+        
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        
+        out = torch.nn.functional.avg_pool2d(out, out.size(2))
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        out = self.activate(out)
+        return out
 # if __name__ == '__main__' :
-#     x = torch.rand(3, 64, 16, 16)
-#     model_1 = Base_block_GN(64, 128, stride=1)
-#     model_1_1 = Individual_block_GN(64, 128, stride=1)
-#     model_2 = Bottleneck_block_GN(64, 32, stride=2)
-    
-#     print('base_block out_shape= ', model_1(x).size())
-#     print('Individual_block_GN out_shape= ', model_1_1(x).size())
-#     print('bottle_neck_block out_shape = ',model_2(x).size())
-    
-IsBottleNeck_list = [32, 64, 128, 256]
-IsBase_list = [64, 128, 256, 512]
+
+# x = torch.randn(4, 3, 64, 64)
+# model = ResNet(Bottleneck_block_GN, in_planes = 32, expansion = 4) # 差異 expansion
+# model = ResNet(Base_block_GN, in_planes = 32, expansion = 1) 
