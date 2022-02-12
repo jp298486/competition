@@ -3,7 +3,7 @@
 Result
 
 ![image](https://github.com/jp298486/deep_learning_with_python/blob/main/Competition/competition2021_04-07_release/image/final_result.jpg)
-
+![image](https://github.com/jp298486/deep_learning_with_python/blob/main/Competition/competition2021_04-07_release/image/esun_competition_2021_summer.jpg)
 ```
 根據baseline_with_Resnet_colab.ipynb結果
 針對分類問題模型最後一層使用LogSoftmax
